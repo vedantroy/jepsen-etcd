@@ -21,6 +21,16 @@
 (def logfile (str dir "/etcd.log"))
 (def pidfile (str dir "/etcd.pid"))
 
+(defn linux-arch
+  "Maps `uname -m` to the etcd release architecture suffix."
+  []
+  (case (str/trim (c/exec :uname :-m))
+    "x86_64"  "amd64"
+    "aarch64" "arm64"
+    "arm64"   "arm64"
+    (throw+ {:type :unsupported-arch
+             :arch (str/trim (c/exec :uname :-m))})))
+
 (defn data-dir
   "Where does this node store its data on disk?"
   [node]
@@ -198,9 +208,9 @@
     ; Install
     (let [version (:version test)]
       (info node "installing etcd" version)
-      (c/su
-        (let [url (str "https://storage.googleapis.com/etcd/v" version
-                       "/etcd-v" version "-linux-amd64.tar.gz")]
+      (let [url (str "https://storage.googleapis.com/etcd/v" version
+                     "/etcd-v" version "-linux-" (linux-arch) ".tar.gz")]
+        (c/su
           (cu/install-archive! url dir))))
 
     (when (:lazyfs test)
