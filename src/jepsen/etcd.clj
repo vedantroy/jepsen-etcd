@@ -241,18 +241,84 @@
 (def test-all-cli-opts
   "CLI options just for test-all"
    [["-w" "--workload NAME" "What workload should we run?"
-    :parse-fn keyword
-    :validate [workloads (cli/one-of workloads)]]
+     :parse-fn keyword
+     :validate [workloads (cli/one-of workloads)]]
    ])
+
+(defn single-test-argv
+  "Constructs a synthetic `test` argv for a specific expanded test-all case so
+  stored subtests can be re-analyzed later with `lein run analyze -t ...`."
+  [opts]
+  (cond-> ["test"]
+    (:ssh-private-key opts)
+    (into ["--ssh-private-key" (:ssh-private-key opts)])
+
+    (:concurrency opts)
+    (into ["--concurrency" (str (:concurrency opts))])
+
+    (:rate opts)
+    (into ["--rate" (str (:rate opts))])
+
+    (:time-limit opts)
+    (into ["--time-limit" (str (:time-limit opts))])
+
+    (:workload opts)
+    (into ["--workload" (name (:workload opts))])
+
+    (:nemesis opts)
+    (into ["--nemesis" (str/join "," (map name (:nemesis opts)))])
+
+    (:client-type opts)
+    (into ["--client-type" (name (:client-type opts))])
+
+    (:version opts)
+    (into ["--version" (:version opts)])
+
+    (:ops-per-key opts)
+    (into ["--ops-per-key" (str (:ops-per-key opts))])
+
+    (:snapshot-count opts)
+    (into ["--snapshot-count" (str (:snapshot-count opts))])
+
+    (:nemesis-interval opts)
+    (into ["--nemesis-interval" (str (:nemesis-interval opts))])
+
+    (:retry-max-attempts opts)
+    (into ["--retry-max-attempts" (str (:retry-max-attempts opts))])
+
+    (:serializable? opts)
+    (conj "--serializable")
+
+    (:corrupt-check opts)
+    (conj "--corrupt-check")
+
+    (:debug opts)
+    (conj "--debug")
+
+    (:lazyfs opts)
+    (conj "--lazyfs")
+
+    (:tcpdump opts)
+    (conj "--tcpdump")
+
+    (:unsafe-no-fsync opts)
+    (conj "--unsafe-no-fsync")
+
+    (:logging-json? opts)
+    (conj "--logging-json")
+
+    (:leave-db-running? opts)
+    (conj "--leave-db-running")))
 
 (defn all-test-options
   "Takes base cli options, a collection of nemeses, workloads, and a test count,
   and constructs a sequence of test options."
   [cli nemeses workloads]
   (for [n nemeses, w workloads, i (range (:test-count cli))]
-    (assoc cli
-           :nemesis   n
-           :workload  w)))
+    (let [opts (assoc cli
+                      :nemesis  n
+                      :workload w)]
+      (assoc opts :argv (single-test-argv opts)))))
 
 (defn all-tests
   "Turns CLI options into a sequence of tests."
