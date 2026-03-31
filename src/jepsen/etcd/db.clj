@@ -36,6 +36,14 @@
   [node]
   (str dir "/" node ".etcd"))
 
+(defn etcd-env
+  "Environment variables for etcd startup. Older etcd releases require an
+  escape hatch to run on arm64."
+  [test]
+  (when (and (= "arm64" (linux-arch))
+             (str/starts-with? (:version test) "3.4."))
+    {"ETCD_UNSUPPORTED_ARCH" "arm64"}))
+
 (defn wipe!
   "Wipes data files on the current node."
   [test node]
@@ -87,7 +95,8 @@
   [test node opts]
   (c/su
     (cu/start-daemon!
-      {:logfile logfile
+      {:env     (etcd-env test)
+       :logfile logfile
        :pidfile pidfile
        :chdir   dir}
       binary

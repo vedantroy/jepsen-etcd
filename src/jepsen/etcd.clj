@@ -308,7 +308,10 @@
     (conj "--logging-json")
 
     (:leave-db-running? opts)
-    (conj "--leave-db-running")))
+    (conj "--leave-db-running")
+
+    (:history-only? opts)
+    (conj "--history-only")))
 
 (defn all-test-options
   "Takes base cli options, a collection of nemeses, workloads, and a test count,
