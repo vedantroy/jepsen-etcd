@@ -16,3 +16,4 @@ pom.xml.asc
 .clj-kondo
 .lsp
 hs_err_pid*.log
+.DS_Store
