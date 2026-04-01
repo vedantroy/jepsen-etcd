@@ -173,12 +173,15 @@
 
 (def cli-opts
   "Additional command line options."
-  [[nil "--client-type TYPE" "What kind of client should we use? Either jetcd or etcdctl. Etcdctl is an experiment and is definitely buggy--in particular, it has a habit of getting stuck while running commands and accidentally leaking operations into the *next* test run."
-    :default :jetcd
-    :parse-fn keyword
-    :validate [#{:etcdctl :jetcd} (cli/one-of #{:etcdctl :jetcd})]]
+   [[nil "--client-type TYPE" "What kind of client should we use? Either jetcd or etcdctl. Etcdctl is an experiment and is definitely buggy--in particular, it has a habit of getting stuck while running commands and accidentally leaking operations into the *next* test run."
+     :default :jetcd
+     :parse-fn keyword
+     :validate [#{:etcdctl :jetcd} (cli/one-of #{:etcdctl :jetcd})]]
 
-    [nil "--corrupt-check" "If set, enables etcd's experimental corruption checking options"]
+    [nil "--instrument-specs" "Enable runtime Clojure spec instrumentation for etcd workload/test constructors."
+     :default false]
+
+     [nil "--corrupt-check" "If set, enables etcd's experimental corruption checking options"]
 
     [nil "--debug" "If set, enables additional (somewhat expensive) debug logging; for instance, txn-list-append will includethe intermediate transactions it executes as a part of each operation."]
 
@@ -307,11 +310,29 @@
     (:logging-json? opts)
     (conj "--logging-json")
 
-    (:leave-db-running? opts)
-    (conj "--leave-db-running")
+     (:leave-db-running? opts)
+     (conj "--leave-db-running")
 
-    (:history-only? opts)
-    (conj "--history-only")))
+     (:instrument-specs opts)
+     (conj "--instrument-specs")
+
+     (:history-only? opts)
+     (conj "--history-only")))
+
+(defonce specs-instrumented?
+  (atom false))
+
+(defn maybe-enable-specs!
+  [opts]
+  (when (:instrument-specs opts)
+    (when (compare-and-set! specs-instrumented? false true)
+      (require 'jepsen.etcd.specs)
+      ((resolve 'jepsen.etcd.specs/instrument!)))))
+
+(defn instrumented-etcd-test
+  [opts]
+  (maybe-enable-specs! opts)
+  (etcd-test opts))
 
 (defn all-test-options
   "Takes base cli options, a collection of nemeses, workloads, and a test count,
@@ -339,12 +360,12 @@
   browsing results."
   [& args]
   (antithesis/with-rng
-    (cli/run! (merge (cli/single-test-cmd {:test-fn  etcd-test
+    (cli/run! (merge (cli/single-test-cmd {:test-fn  instrumented-etcd-test
                                            :opt-spec (into cli-opts
-                                                           test-cli-opts)})
-                     (cli/test-all-cmd {:tests-fn (partial all-tests etcd-test)
-                                        :opt-spec (into cli-opts
-                                                        test-all-cli-opts)})
+                                                            test-cli-opts)})
+                     (cli/test-all-cmd {:tests-fn (partial all-tests instrumented-etcd-test)
+                                         :opt-spec (into cli-opts
+                                                         test-all-cli-opts)})
                      (cli/serve-cmd))
               args)))
 
