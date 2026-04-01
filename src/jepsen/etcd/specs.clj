@@ -11,12 +11,13 @@
                     [client :as client]]
             [jepsen.generator :as gen]
             [jepsen.db :as db]
-            [jepsen.etcd :as etcd]
-            [jepsen.etcd.append :as append]
-            [jepsen.etcd.register :as register]
-            [jepsen.etcd.set :as set]
-            [jepsen.etcd.watch :as watch]
-            [jepsen.etcd.wr :as wr]))
+             [jepsen.etcd :as etcd]
+             [jepsen.etcd.append :as append]
+             [jepsen.etcd.lock :as lock]
+             [jepsen.etcd.register :as register]
+             [jepsen.etcd.set :as set]
+             [jepsen.etcd.watch :as watch]
+             [jepsen.etcd.wr :as wr]))
 
 (defn client-instance?
   [x]
@@ -94,6 +95,10 @@
   :args (s/cat :opts ::opts)
   :ret ::workload-map)
 
+(s/fdef lock/workload
+  :args (s/cat :opts ::opts)
+  :ret ::workload-map)
+
 (s/fdef set/workload
   :args (s/cat :opts ::opts)
   :ret ::workload-map)
@@ -132,6 +137,7 @@
 
 (def workload-constructors
   [[:append append/workload]
+   [:lock-set lock/workload]
    [:set set/workload]
    [:register register/workload]
    [:watch watch/workload]
@@ -140,6 +146,7 @@
 (def instrumented-vars
   [#'etcd/parse-nemesis-spec
    #'append/workload
+   #'lock/workload
    #'set/workload
    #'register/workload
    #'watch/workload

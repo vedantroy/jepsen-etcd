@@ -21,13 +21,14 @@
             [jepsen.control.util :as cu]
              [jepsen.os.debian :as debian]
              [jepsen.etcd [append :as append]
-                          [db :as db]
-                          [client :as ec]
-                          [nemesis :as nemesis]
-                          [register :as register]
-                          [set :as set]
-                          [support :as s]
-                         [watch :as watch]
+                           [db :as db]
+                           [client :as ec]
+                           [lock :as lock]
+                           [nemesis :as nemesis]
+                           [register :as register]
+                           [set :as set]
+                           [support :as s]
+                          [watch :as watch]
                          [wr :as wr]]
             [knossos.model :as model]
             [slingshot.slingshot :refer [try+]]))
@@ -35,6 +36,7 @@
 (def workloads
   "A map of workload names to functions that construct workloads, given opts."
   {:append         append/workload
+   :lock-set       lock/workload
    :none           (fn [_] tests/noop-test)
    :set            set/workload
    :register       register/workload
@@ -93,8 +95,12 @@
       :workload     Name of the workload to run."
   [opts]
   (s/check-thread-leaks)
-  (let [serializable? (boolean (:serializable? opts))
-        workload-name (:workload opts)
+  (let [workload-name (:workload opts)
+        concurrency   (if (= :lock-set workload-name)
+                        5
+                        (:concurrency opts))
+        opts          (assoc opts :concurrency concurrency)
+        serializable? (boolean (:serializable? opts))
         workload      ((workloads workload-name) opts)
         db            (db/db opts)
         nemesis       (nemesis/nemesis-package
