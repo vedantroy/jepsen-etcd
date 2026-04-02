@@ -78,7 +78,7 @@
                                            #(c/revoke-lease! conn lease-id')))))]
         (if (= ::wrote result)
           (assoc op :type :ok)
-          result)))
+          result))))
 
   (teardown! [_ test])
 
